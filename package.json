@@ -35,6 +35,7 @@
     "test": "bun test tests/index.test.ts",
     "test:perf": "bun test tests/perf.test.ts",
     "test:all": "bun run test && bun run test:perf",
+    "bench": "bun run build:no-test && bun bench/bench.mjs && node bench/bench.mjs",
     "prepublishOnly": "bun run build"
   },
   "exports": {

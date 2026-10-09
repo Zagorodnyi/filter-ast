@@ -340,6 +340,30 @@ try {
 
 A non-object root throws a plain `TypeError`, not a `FilterError`.
 
+## Performance
+
+Cost of one `buildAbstractFilterTree` call, including allocation of the returned tree. Median of 11 rounds × 100 000 calls; each cell runs in its own process after a 20 000-call warm-up. **Hot** reuses one filter object. **Fresh** cycles through 4 096 distinct pre-built objects: construction is excluded, but every call sees a new object and new `$and`/`$or` symbols. Apple M4.
+
+Bun 1.4.2
+
+| Workload | Hot | Fresh |
+|---|---|---|
+| flat, 3 fields | 37.4 ns (26.8 M ops/s) | 37.5 ns (26.7 M ops/s) |
+| operators, 5 fields | 165 ns (6.1 M ops/s) | 167 ns (6.0 M ops/s) |
+| nested $and/$or, 3 levels | 200 ns (5.0 M ops/s) | 392 ns (2.6 M ops/s) |
+| $in, 200 items | 1984 ns (504 K ops/s) | 2090 ns (478 K ops/s) |
+
+Node v24.10.0
+
+| Workload | Hot | Fresh |
+|---|---|---|
+| flat, 3 fields | 61.2 ns (16.3 M ops/s) | 58.9 ns (17.0 M ops/s) |
+| operators, 5 fields | 244 ns (4.1 M ops/s) | 232 ns (4.3 M ops/s) |
+| nested $and/$or, 3 levels | 454 ns (2.2 M ops/s) | 455 ns (2.2 M ops/s) |
+| $in, 200 items | 2713 ns (369 K ops/s) | 3304 ns (303 K ops/s) |
+
+Reproduce with `bun run bench`: builds `dist`, prints the table on Bun, then on Node. Workloads are defined in [`bench/bench.mjs`](./bench/bench.mjs).
+
 ## Limitations
 
 - `$and` and `$or` work only as computed keys in object literals. They are not reusable symbols: each use creates a new key, so `obj[$and] = { a: 1 }` followed by `obj[$and]` returns `undefined`.
