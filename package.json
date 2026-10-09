@@ -1,0 +1,53 @@
+{
+  "name": "@sirzag/filter-ast",
+  "version": "1.3.0",
+  "description": "Parses a declarative filter object with operator strings into a typed, database-agnostic filter tree",
+  "keywords": [
+    "filter",
+    "query",
+    "query-builder",
+    "where",
+    "abstract-syntax-tree"
+  ],
+  "author": "Sirzag <dev@sirzag.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zagorodnyi/filter-ast.git"
+  },
+  "homepage": "https://github.com/Zagorodnyi/filter-ast#readme",
+  "bugs": {
+    "url": "https://github.com/Zagorodnyi/filter-ast/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "bun run test && bun run build.ts",
+    "build:no-test": "bun run build.ts",
+    "test": "bun test tests/index.test.ts",
+    "test:perf": "bun test tests/perf.test.ts",
+    "test:all": "bun run test && bun run test:perf",
+    "prepublishOnly": "bun run build"
+  },
+  "exports": {
+    "types": "./dist/index.d.ts",
+    "import": "./dist/index.mjs",
+    "require": "./dist/index.cjs"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@types/node": "^26.4.1",
+    "typescript": "^5.9.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
