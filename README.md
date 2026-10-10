@@ -319,6 +319,49 @@ const [root] = buildAbstractFilterTree({ a: 1, [$and]: { b: 2 } });
 root.conditions.map((c) => isFilterGroup(c)); // [ false, true ]
 ```
 
+## Example: Translating the tree with Kysely
+
+The package stops at the tree. What an operator means, how `null` compares and which SQL comes out are the consumer's decisions. One possible mapping onto a [Kysely](https://kysely.dev) `where` clause, `db` being a `Kysely` instance:
+
+```ts
+import { buildAbstractFilterTree, isFilterGroup, $and, joinOr } from "@sirzag/filter-ast";
+import type { FilterExpression } from "@sirzag/filter-ast";
+import type { Expression, ExpressionBuilder, SqlBool } from "kysely";
+
+function toKysely(eb: ExpressionBuilder<any, any>, expr: FilterExpression): Expression<SqlBool> {
+  if (isFilterGroup(expr)) {
+    const parts = expr.conditions.map((c) => toKysely(eb, c));
+    return expr.joinLogic === "and" ? eb.and(parts) : eb.or(parts);
+  }
+  const { field, operator, value } = expr;
+  switch (operator) {
+    case "eq": return eb(field, value === null ? "is" : "=", value);
+    case "not": return eb(field, value === null ? "is not" : "!=", value);
+    case "in": return eb(field, "in", value);
+    case "between": return eb.between(field, (value as unknown[])[0], (value as unknown[])[1]);
+    case "has": return eb(field, "@>", eb.val([value]));
+    default: throw new Error(`Unsupported operator: ${operator}`);
+  }
+}
+
+const tree = buildAbstractFilterTree({
+  deletedAt: null,
+  role: "$not(guest)",
+  tags: "$has(vip)",
+  [$and]: joinOr({ status: "$in(active,pending)", age: "$between(18,30)" }),
+});
+
+db.selectFrom("users").selectAll().where((eb) => eb.and(tree.map((g) => toKysely(eb, g))));
+```
+
+```sql
+select * from "users"
+where ("deletedAt" is null and "role" != $1 and "tags" @> $2 and ("status" in ($3, $4) or "age" between $5 and $6))
+-- [ 'guest', [ 'vip' ], 'active', 'pending', 18, 30 ]
+```
+
+`has` is mapped to the Postgres array operator `@>` here; the remaining operators follow the same pattern. An empty tree compiles to `1 = 1`. `$in()` compiles to `in ()`, which Postgres rejects, so decide what an empty list means before this point. Validate `field` against the columns you expose before it reaches the query builder. Checked against Kysely 0.29.6.
+
 ## Errors
 
 Every `$between` validation error is a `FilterError`. It extends `Error` and carries the field and the raw operator string:
